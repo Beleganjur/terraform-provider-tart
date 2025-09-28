@@ -1,6 +1,6 @@
 # Terraform Provider for Tart Virtualization
 
-A minimal custom Terraform provider for managing Tart virtual machines via a secure Go API controller.
+A Terraform provider for managing Tart virtual machines via a secure Go API controller.
 
 ## Usage
 See `USAGE.md` for end-to-end instructions, including:
