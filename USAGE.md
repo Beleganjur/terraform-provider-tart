@@ -1,7 +1,7 @@
 # Usage
 
 ## Prerequisites
-- Go 1.22+
+- Go 1.26+
 - Terraform 1.6+
 - Tart CLI installed and working (`tart --version`)
 - API and Executor from this repo running, or use the in-process tests

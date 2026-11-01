@@ -1,0 +1,17 @@
+initialize: |
+  curl -sSL https://go.dev/dl/go1.26.10.linux-amd64.tar.gz | tar -C /usr/local -xz
+  GOPATH_BIN=$(/usr/local/go/bin/go env GOPATH)/bin
+  echo "PATH=/usr/local/go/bin:$GOPATH_BIN:$PATH" >> $ENVRC
+  /usr/local/go/bin/go install golang.org/x/vuln/cmd/govulncheck@latest
+maintenance: |
+  /usr/local/go/bin/go mod download
+knowledge:
+  - name: build
+    contents: |
+      go build ./...   # requires Go >= 1.26
+  - name: test
+    contents: |
+      go test ./...    # tart-api-test/TestListImages needs a live tart API and fails otherwise
+  - name: vuln-scan
+    contents: |
+      govulncheck ./...
