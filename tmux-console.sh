@@ -29,7 +29,7 @@ if [[ -f .env ]]; then
 fi
 
 # Session name from .env or default
-SESSION="${BSS_TMUX_CONSOLE_TART_TF:-bss}"
+SESSION="${BSS_TMUX_CONSOLE_TART_TF:-beleganjur_services}"
 if [[ -z "${SESSION}" ]]; then
   echo "Session name empty, aborting" >&2
   exit 1
