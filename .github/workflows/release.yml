@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # tart requires Apple Silicon (Virtualization.framework) — only
+    # darwin/arm64 artifacts are produced.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries (darwin/arm64)
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -e
+          out="dist/terraform-provider-tart_${VERSION}_darwin_arm64"
+          mkdir -p "$out"
+          for pkg in terraform-provider-tart tart-api; do
+            CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
+              -o "$out/$pkg" "./cmd/$pkg"
+          done
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
+            -o "$out/tart-executor" ./tart-executor
+
+      - name: Package archive + checksums
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          cd dist
+          zip -r "terraform-provider-tart_${VERSION}_darwin_arm64.zip" \
+            "terraform-provider-tart_${VERSION}_darwin_arm64"
+          shasum -a 256 *.zip > terraform-provider-tart_${VERSION}_SHA256SUMS
+          cat terraform-provider-tart_${VERSION}_SHA256SUMS
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
