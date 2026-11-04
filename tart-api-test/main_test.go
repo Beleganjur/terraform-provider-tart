@@ -13,7 +13,7 @@ import (
 )
 
 var (
-    apiURL   string
+    apiURL   = getenv("TART_API_URL", "")
     apiToken = getenv("TART_API_TOKEN", "")
 )
 
@@ -67,8 +67,13 @@ func TestListImages(t *testing.T) {
     if apiToken != "" {
         req.Header.Set("Authorization", "Bearer "+apiToken)
     }
+    if apiURL == "" {
+        t.Skip("TART_API_URL not set; skipping live API test")
+    }
     resp, err := http.DefaultClient.Do(req)
-    assert.NoError(t, err)
+    if err != nil {
+        t.Fatalf("GET %s/images failed: %v", apiURL, err)
+    }
     assert.Equal(t, http.StatusOK, resp.StatusCode)
 
     defer resp.Body.Close()

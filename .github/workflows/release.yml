@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -e
+          out="dist/terraform-provider-tart_${VERSION}_${GOOS}_${GOARCH}"
+          mkdir -p "$out"
+          for pkg in terraform-provider-tart tart-api; do
+            CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
+              -o "$out/$pkg" "./cmd/$pkg"
+          done
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
+            -o "$out/tart-executor" ./tart-executor
+
+      - name: Package archive
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          cd dist
+          zip -r "terraform-provider-tart_${VERSION}_${GOOS}_${GOARCH}.zip" \
+            "terraform-provider-tart_${VERSION}_${GOOS}_${GOARCH}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-provider-tart_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: terraform-provider-tart_*
+          merge-multiple: true
+          path: dist
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum *.zip > terraform-provider-tart_${{ github.ref_name }}_SHA256SUMS
+          cat terraform-provider-tart_${{ github.ref_name }}_SHA256SUMS
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
