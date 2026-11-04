@@ -9,11 +9,9 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, darwin]
-        goarch: [amd64, arm64]
+    # tart requires Apple Silicon (Virtualization.framework) — only
+    # darwin/arm64 artifacts are produced.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -22,14 +20,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build binaries
+      - name: Build binaries (darwin/arm64)
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ github.ref_name }}
         run: |
           set -e
-          out="dist/terraform-provider-tart_${VERSION}_${GOOS}_${GOARCH}"
+          out="dist/terraform-provider-tart_${VERSION}_darwin_arm64"
           mkdir -p "$out"
           for pkg in terraform-provider-tart tart-api; do
             CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
@@ -38,38 +34,15 @@ jobs:
           CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
             -o "$out/tart-executor" ./tart-executor
 
-      - name: Package archive
+      - name: Package archive + checksums
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ github.ref_name }}
         run: |
           cd dist
-          zip -r "terraform-provider-tart_${VERSION}_${GOOS}_${GOARCH}.zip" \
-            "terraform-provider-tart_${VERSION}_${GOOS}_${GOARCH}"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-provider-tart_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}
-          path: dist/*.zip
-          if-no-files-found: error
-
-  publish:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: terraform-provider-tart_*
-          merge-multiple: true
-          path: dist
-
-      - name: Checksums
-        run: |
-          cd dist
-          sha256sum *.zip > terraform-provider-tart_${{ github.ref_name }}_SHA256SUMS
-          cat terraform-provider-tart_${{ github.ref_name }}_SHA256SUMS
+          zip -r "terraform-provider-tart_${VERSION}_darwin_arm64.zip" \
+            "terraform-provider-tart_${VERSION}_darwin_arm64"
+          shasum -a 256 *.zip > terraform-provider-tart_${VERSION}_SHA256SUMS
+          cat terraform-provider-tart_${VERSION}_SHA256SUMS
 
       - name: GitHub release
         uses: softprops/action-gh-release@v2
